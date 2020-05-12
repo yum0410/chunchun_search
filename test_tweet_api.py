@@ -2,6 +2,7 @@ import urllib
 from requests_oauthlib import OAuth1
 import requests
 import sys
+import pandas as pd
 
 
 def search_tweets(CK, CKS, AT, ATS, word, count, n):
@@ -13,7 +14,7 @@ def search_tweets(CK, CKS, AT, ATS, word, count, n):
     auth = OAuth1(CK, CKS, AT, ATS)
     response = requests.get(url, auth=auth)
     data = response.json()['statuses']
-    # 2回目以降のリクエスト
+
     cnt = 0
     tweets = []
     while True:
@@ -23,8 +24,17 @@ def search_tweets(CK, CKS, AT, ATS, word, count, n):
         if cnt > n:
             break
         for tweet in data:
-            tweets.append(tweet['text'])
             maxid = int(tweet["id"]) - 1
+            tweet = {
+                "id": tweet["id"],
+                "created_at": tweet["created_at"],
+                "user": tweet["user"]["name"],
+                "user_description": tweet["user"]["description"],
+                "text": tweet["text"],
+                "retweet_count": tweet["retweet_count"]
+                }
+            tweets.append(tweet)
+        # 2回目以降のリクエスト
         url = "https://api.twitter.com/1.1/search/tweets.json?lang=ja&q="+word+"&count="+str(count)+"&max_id="+str(maxid)
         response = requests.get(url, auth=auth)
         try:
@@ -48,11 +58,10 @@ def main():
     count = 100 # 一回あたりの検索数(最大100/デフォルトは15)
     n = 5 # 検索回数の上限値(最大180/15分でリセット)
 
-   # ツイート検索・テキストの抽出
+    # ツイート検索・テキストの抽出
     tweets = search_tweets(CK, CKS, AT, ATS, word, count, n)
-    import pprint
-    # 検索結果を表示
-    pprint.pprint(tweets)
+    tweets = pd.DataFrame(tweets)
+    tweets.to_csv("./tweets.csv", encoding="utf-8-sig")
 
 if __name__ == '__main__':
     main()
